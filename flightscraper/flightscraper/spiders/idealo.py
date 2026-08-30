@@ -13,17 +13,12 @@ class IdealoSpider(scrapy.Spider):
     name = "idealo"
     allowed_domains = ["flug.idealo.de"]
 
-    PLAYWRIGHT_ABORT_REQUEST = lambda req: req.resource_type in [
-        "image",
-        "stylesheet",
-        "media",
-        "font",
-    ]
+    PLAYWRIGHT_ABORT_REQUEST = lambda req: req.resource_type in ["image", "stylesheet", "media", "font"]
     #   Diese überschreiben die Werte aus settings.py.
     custom_settings = {
         "PLAYWRIGHT_MAX_PAGES_PER_CONTEXT": 12,
         "DOWNLOAD_TIMEOUT": 60,
-        "PLAYWRIGHT_DEFAULT_NAVIGATION_TIMEOUT": 30000,  #
+        "PLAYWRIGHT_DEFAULT_NAVIGATION_TIMEOUT": 30000,  
         "PLAYWRIGHT_DEFAULT_TIMEOUT": 30000,
         "DOWNLOAD_DELAY": 0.5,
         "RANDOMIZE_DOWNLOAD_DELAY": True,
@@ -39,7 +34,7 @@ class IdealoSpider(scrapy.Spider):
         "PLAYWRIGHT_ABORT_REQUEST": PLAYWRIGHT_ABORT_REQUEST,
     }
     DEPARTURE_START = date(2026, 10, 12)
-    DEPARTURE_END = date(2026, 10, 18)  # 7 Tage Abflugzeitraum
+    DEPARTURE_END = date(2026, 10, 18) 
     WEEKDAYS_DE = ["Mo.", "Di.", "Mi.", "Do.", "Fr.", "Sa.", "So."] 
     FLIGHT_CLASS_NAME = ( "business" ) 
     COMFORT_CLASS = "2"  # 2 for business, 1 for economy
@@ -93,14 +88,14 @@ class IdealoSpider(scrapy.Spider):
 
                 self.status_handler.mark_route_status(route, departure_date, "queued")
                 # Route aus csv gelesen und für sie eine HTTP-POST-Request(Playwright-Request) an Scrapy übergeben
-                yield scrapy.FormRequest(  #   intern passiert await page.goto("https://flug.idealo.de/search.php?action=search")
+                yield scrapy.FormRequest(  # intern passiert await page.goto("https://flug.idealo.de/search.php?action=search")
                     url="https://flug.idealo.de/search.php?action=search",  # Flugsuche über das API Call search.php?action=search
                     formdata={
                         "adults": "1",
                         "children": "0",
                         "infants": "0",
                         "comfortclass": self.COMFORT_CLASS,
-                        "direct": "1",  # just direct flights
+                        "direct": "1",  # only direct flights
                         "flexdates": "0",
                         "from": route["from"],
                         "to": route["to"],
@@ -305,10 +300,8 @@ class IdealoSpider(scrapy.Spider):
                 airport = out.get("airport", {})
                 stops_airports = out.get("stops_airports", [])
 
-                if ( # Nur exakt gewünschte Route
-                    airport.get("start_code") != route["from"]
-                    or airport.get("arrival_code") != route["to"]
-                ):
+                 # Nur die gewünschte Route
+                if ( airport.get("start_code") != route["from"] or airport.get("arrival_code") != route["to"] ):
                     continue
     
                 if len(stops_airports) != 0:
@@ -325,10 +318,9 @@ class IdealoSpider(scrapy.Spider):
 
                 seen_keys.add(key)
                 yield item
+
             # Pagination-Block
-            next_last = data.get(
-                "last"
-            )  # Zeiger(Cursor) auf die nächste Ergebnisseite und wird vollständig vom Idealo-Server bestimmt.
+            next_last = data.get("last")  # Zeiger(Cursor) auf die nächste Ergebnisseite. Wird vollständig vom Idealo-Server bestimmt.
 
             if next_last and next_last not in seen_last:
                 seen_last.add(next_last)
@@ -360,27 +352,18 @@ class IdealoSpider(scrapy.Spider):
             self.status_handler.mark_route_status(route, departure_date, "parse_api_error") # error Verarbeiten gültigen JSON-RESPONSE_Daten
             return
 
-    def extract_flight_data(self, offer, url, route):
+    def extract_flight_data(self, offer, route):
         item = FlightscraperItem()
         out = offer.get("flight", {}).get("out", {})
         airport = out.get("airport", {})
-        airlines = out.get("airlines", [])
         offer_data = offer.get("offer", {})
-        hand = offer_data.get("handBaggage", {})
-        # stops_airports = out.get("stops_airports", [])
         item["crawled_at"] = datetime.now(timezone.utc).isoformat()
         item["price"] = offer.get("offer", {}).get("total_price") or ""
-        # item["airline_name"] = airlines[0].get("name") if airlines else ""
-        # item["airline_id"] = airlines[0].get("code") if airlines else ""
-        # item["flight_number"] = airlines[0].get("flight_number") if airlines else ""
+        airlines = out.get("airlines", [])
         item["airline_name"] = ",".join(airline.get("name", "") for airline in airlines)
         item["airline_iata"] = ",".join(airline.get("code", "") for airline in airlines)
-        # item["airline_id"] = ",".join(airline.get("code", "") for airline in airlines)
-        # item["flight_number"] = ",".join(airline.get("flight_number", "") for airline in airlines)
         item["duration"] = airport.get("flightduration", "")
-        stops_airports = out.get("stops_airports", [])
-        item["stops"] = len(stops_airports)
-        # item["stop_airports"] = ",".join(s.get("code", "")for s in stops_airports)
+        item["stops"] = len(out.get("stops_airports", []))
         departure_time = airport.get("start_time", "")
         departure_date = airport.get("start_date", "")
         item["departure"] = f"{departure_date}T{departure_time}:00"
@@ -392,11 +375,9 @@ class IdealoSpider(scrapy.Spider):
         item["flight_route_id"] = route["uid"]
         item["flight_class"] = self.FLIGHT_CLASS_NAME
         item["checked_baggage_included"] = offer_data.get("baggage_included")
-        item["carry_on_baggage_included"] = hand.get("included")
+        item["carry_on_baggage_included"] = offer_data.get("handBaggage", {}).get("included")
         item["additional_baggage"] = offer_data.get("additional_baggage")
         item["baggage_info_text"] = offer_data.get("baggage_info_text")
-        # item["carry_on_baggage_weight"] = hand.get("weight")
-        # item["carry_on_baggage_size"] = hand.get("size")
         item["personal_item_included"] = offer_data.get("personal_item_included")
         item["remaining_seats"] = offer_data.get("remaining_seats")
 
@@ -411,10 +392,8 @@ class IdealoSpider(scrapy.Spider):
             item["from_iata"],
             item["to_iata"],
             item["departure"],
-            # item["departure_time"],
             item["duration"],
             flightsteps,
-            # flight_numbers,
         )
 
     def replace_query_param(self, url, key, value):
@@ -451,15 +430,11 @@ class IdealoSpider(scrapy.Spider):
         page = failure.request.meta.get("playwright_page")
         if page:
             try:
-                await asyncio.wait_for(
-                    page.close(), timeout=5
-                )  #    playwright-page schließen
+                await asyncio.wait_for(page.close(), timeout=5)  #    playwright-page schließen
             except Exception:
                 pass
-        
-        if ( # Temporäre Playwright-/Browser-Probleme
-            "Timeout" in error_text # Page.goto: Timeout 30000ms exceeded. ....
-        ): # Playwright konnte im Moment die Suchseite nicht rechtzeitig laden, später kann es funktioneiren
+        # Temporäre Playwright-/Browser-Probleme ( zb Page.goto: Timeout 30000ms exceeded ) behandeln
+        if  "Timeout" in error_text:  # Playwright konnte im Moment die Suchseite nicht rechtzeitig laden, später kann es funktioneiren
             self.status_handler.mark_route_status(route, departure_date, "Playwright_Timeout")
             return
 
