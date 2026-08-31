@@ -18,8 +18,6 @@ class IdealoSpider(scrapy.Spider):
     custom_settings = {
         "PLAYWRIGHT_MAX_PAGES_PER_CONTEXT": 12,
         "DOWNLOAD_TIMEOUT": 60,
-        "PLAYWRIGHT_DEFAULT_NAVIGATION_TIMEOUT": 30000,  
-        "PLAYWRIGHT_DEFAULT_TIMEOUT": 30000,
         "DOWNLOAD_DELAY": 0.5,
         "RANDOMIZE_DOWNLOAD_DELAY": True,
         "AUTOTHROTTLE_ENABLED": True,
