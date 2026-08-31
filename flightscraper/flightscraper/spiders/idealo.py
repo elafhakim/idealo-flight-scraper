@@ -48,10 +48,10 @@ class IdealoSpider(scrapy.Spider):
 
     # Abflugtage erzeugen und in die Formate umwandeln, die Idealo benötigt
     def iter_departure_dates(self):
-        d = self.DEPARTURE_START
-        while d <= self.DEPARTURE_END:
-            yield d  # Gib ein Datum zurück und merke dir die aktuelle Position. Beim nächsten Aufruf geht es mit dem nächsten Tag weiter.
-            d += timedelta(days=1)
+        departure_date = self.DEPARTURE_START
+        while departure_date <= self.DEPARTURE_END:
+            yield departure_date  # Gib ein Datum zurück und merke dir die aktuelle Position. Beim nächsten Aufruf geht es mit dem nächsten Tag weiter.
+            departure_date += timedelta(days=1)
 
     # Idealo erwartet im Suchformular diese spezifische Form Mo. dd.mm.yy
     def idealo_go_date(self, d):
